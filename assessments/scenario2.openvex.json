@@ -1,0 +1,24 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/dupremathieu/vulnscout-sarif-sandbox/openvex/scenario2",
+  "author": "VulnScout SARIF sandbox",
+  "timestamp": "2026-11-10T18:00:00+00:00",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {"name": "CVE-1999-0199"},
+      "products": [{"@id": "glibc-binary-localedata-en-us@2.43"}, {"@id": "glibc-gconv-ibm437@2.43"}],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "Sandbox test: 1999 CVE matched on the name only.",
+      "timestamp": "2026-11-10T18:00:00+00:00"
+    },
+    {
+      "vulnerability": {"name": "CVE-1999-0199"},
+      "products": [{"@id": "glibc-gconv-ibm850@2.43"}],
+      "status": "fixed",
+      "status_notes": "Sandbox test: marked fixed.",
+      "timestamp": "2026-11-10T18:00:00+00:00"
+    }
+  ]
+}
