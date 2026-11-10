@@ -1,0 +1,62 @@
+name: VulnScout
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+  security-events: write
+  actions: read
+
+env:
+  VULNSCOUT_IMAGE: ghcr.io/dupremathieu/vulnscout:sarif-test
+  PROJECT: seapath
+  VARIANT: host-cluster
+  SBOM: sbom/host-cluster.rootfs.spdx.json.gz
+  # The full export (83k results, 195 MB) is above the GitHub limits.
+  CONDITION: "cvss >= 9.0"
+
+jobs:
+  vulnscout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The launcher prefers podman, which ubuntu-latest also ships.
+      - name: Log in to ghcr.io
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Import the SBOM
+        run: |
+          gunzip -c "$SBOM" > host-cluster.rootfs.spdx.json
+          ./vulnscout add -p "$PROJECT" -v "$VARIANT" --spdx host-cluster.rootfs.spdx.json
+
+      - name: Scan
+        run: ./vulnscout scan -p "$PROJECT" -v "$VARIANT" --sbom-cve-check
+
+      - name: Import custom assessments
+        run: |
+          shopt -s nullglob
+          for f in assessments/*.openvex.json; do
+            echo "Importing $f"
+            ./vulnscout import -p "$PROJECT" -v "$VARIANT" custom-openvex "$f"
+          done
+
+      - name: Export SARIF
+        run: |
+          ./vulnscout export -p "$PROJECT" -v "$VARIANT" sarif --location "$SBOM" --condition "$CONDITION"
+          jq '[.runs[] | {category: .automationDetails.id, rules: (.tool.driver.rules | length), results: (.results | length), suppressed: ([.results[] | select(.suppressions)] | length)}]' .vulnscout/outputs/vulnscout.sarif
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vulnscout-outputs
+          path: .vulnscout/outputs/vulnscout.sarif
+          if-no-files-found: warn
+
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: .vulnscout/outputs/vulnscout.sarif
